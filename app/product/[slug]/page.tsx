@@ -6,7 +6,13 @@ import { useParams, useRouter } from "next/navigation";
 import { Product } from "@/app/utils/type";
 import CustomizationForm from "@/components/CustomizationForm";
 import PreviewCanvas from "@/components/PreviewCanvas";
-import { ChevronLeft, ChevronRight, Package, ShoppingCart } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Link,
+  Package,
+  ShoppingCart,
+} from "lucide-react";
 import Header from "@/components/Header";
 
 const authHeader = {

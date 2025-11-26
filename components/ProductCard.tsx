@@ -1,8 +1,9 @@
+"use client";
+
 import { Product } from "@/app/utils/type";
 import Link from "next/link";
 import Image from "next/image";
-import { Package, ShoppingCart, Sparkles } from "lucide-react";
-import { ExternalLink } from "lucide-react";
+import { Package, Sparkles, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 
 const ProductCard: React.FC<Props> = ({ product }) => {
   const router = useRouter();
+
   const imageUrl = product.images?.[0]?.url
     ? `http://localhost:1337${product.images[0].url}`
     : "/placeholder.jpg";
@@ -19,114 +21,173 @@ const ProductCard: React.FC<Props> = ({ product }) => {
     product?.variants?.reduce((sum, v) => sum + (v.stock ?? 0), 0) ?? 0;
 
   return (
-    <div className="group relative block">
-      {" "}
-      {/* Wrapper to allow absolute button */}
-      <Link href={`/product/${product.slug}`} className="block">
-        <div className="relative w-full overflow-hidden rounded-3xl bg-white shadow-lg hover:shadow-2xl ring-1 ring-gray-100 hover:ring-pink-600 transition-all duration-500 transform hover:-translate-y-3 border border-transparent hover:border-pink-200">
-          {/* Image Container */}
-          <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="group relative w-full">
+      <Link href={`/product/${product.slug}`} className="block h-full">
+        <article
+          className="
+            relative h-full overflow-hidden rounded-2xl 
+            bg-white shadow-lg hover:shadow-2xl 
+            ring-1 ring-gray-200 hover:ring-pink-500 
+            transition-all duration-500 ease-out
+            hover:-translate-y-1.5 hover:scale-[1.02]
+            border border-gray-100
+            flex flex-col
+          "
+        >
+          {/* IMAGE CONTAINER */}
+          <div className="relative aspect-square w-full overflow-hidden bg-gray-50">
             <Image
               src={imageUrl}
               alt={product.title}
               fill
-              className="object-cover transition-transform duration-700 group-hover:scale-110"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="
+                object-cover transition-transform duration-700 ease-out
+                group-hover:scale-110
+              "
+              sizes="
+                (max-width: 640px) 90vw,
+                (max-width: 768px) 45vw,
+                (max-width: 1024px) 30vw,
+                (max-width: 1280px) 25vw,
+                20vw
+              "
+              priority={false}
               loading="lazy"
-              placeholder="blur"
-              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNMQJHGp0XcOH2V0g1x9fQzygb6xJb6+0yZ3V6oK58b////b"
             />
 
-            {/* Gradient Overlay + Shine */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute inset-0 translate-x-full group-hover:translate-x-0 transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12" />
+            {/* Hover Gradient Overlay */}
+            <div
+              className="
+              absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent
+              opacity-0 group-hover:opacity-100 
+              transition-opacity duration-500
+            "
+            />
 
-            {/* Badges */}
-            {product.allow_customization && (
-              <div className="absolute top-4 left-4 z-20">
-                <span className="inline-flex items-center gap-1.5 backdrop-blur-md bg-pink-400 text-white text-xs font-bold px-4 py-2 rounded-full shadow-2xl">
-                  <Sparkles className="w-4 h-4 animate-pulse" />
-                  Customizable
-                </span>
-              </div>
-            )}
+            {/* Shine Effect (Desktop Only) */}
+            <div
+              className="
+              hidden lg:block
+              absolute inset-0 -translate-x-full 
+              group-hover:translate-x-full 
+              transition-transform duration-linear duration-1000
+              bg-gradient-to-r from-transparent via-white/20 to-transparent
+              skew-x-12
+            "
+            />
 
-            <div className="absolute top-4 right-4 z-20">
-              {totalStock > 0 ? (
-                <span className="flex items-center gap-1 bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+            {/* Badges - Smart Responsive Layout */}
+            <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
+              <div
+                className="
+    flex flex-row flex-wrap justify-start items-start 
+    gap-2
+    sm:gap-3
+  "
+              >
+                {/* Customizable Badge */}
+                {product.allow_customization && (
+                  <span
+                    className="
+        inline-flex items-center gap-1.5 
+        px-3 py-1.5 text-xs font-bold 
+        bg-pink-600 text-white 
+        rounded-full shadow-lg backdrop-blur-sm
+        sm:px-4 sm:py-2 sm:text-sm
+        pointer-events-auto
+      "
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Customizable
+                  </span>
+                )}
+
+                {/* Stock Badge */}
+                <span
+                  className={`
+      inline-flex items-center gap-1.5 
+      px-3 py-1.5 text-xs font-bold text-white 
+      rounded-full shadow-md
+      ${totalStock > 0 ? "bg-green-600" : "bg-red-600"}
+      sm:px-4 sm:py-2 sm:text-sm
+      pointer-events-auto
+      ${!product.allow_customization ? "ml-auto" : ""}
+    `}
+                >
                   <Package className="w-3.5 h-3.5" />
-                  In Stock
+                  {totalStock > 0 ? "In Stock" : "Out of Stock"}
                 </span>
-              ) : (
-                <span className="bg-red-500/90 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                  Out of Stock
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-5 space-y-3 bg-gradient-to-b from-transparent to-gray-50/50">
-            <h3 className="font-extrabold text-lg text-gray-900 line-clamp-2 group-hover:text-pink-600 transition-colors duration-300 tracking-tight">
-              {product.title}
-            </h3>
-
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-2xl font-black text-red-600">
-                  ${product.price.toFixed(2)}
-                </p>
               </div>
             </div>
           </div>
 
-          {/* Add to Cart Button - Floating on Hover */}
-          {/* <div className="absolute inset-x-0 bottom-4 px-5 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 z-30 pointer-events-none">
-            <button
-              onClick={(e) => {
-                e.preventDefault(); // Prevent navigating to product page
-                e.stopPropagation();
-                // TODO: Add to cart logic here
-                // router.push("/cart");
-              }}
-              disabled={totalStock === 0}
-              className={`w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl font-bold text-sm tracking-wide shadow-xl transition-all duration-300 transform hover:scale-105 pointer-events-auto
-                ${
-                  totalStock > 0
-                    ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white hover:from-pink-600 hover:to-pink-700 hover:shadow-pink-500/30"
-                    : "bg-gray-400 text-gray-200 cursor-not-allowed"
-                }
-              `}
+          {/* CONTENT */}
+          <div className="p-4 sm:p-5 lg:p-6 flex flex-col flex-grow justify-between bg-white">
+            <div>
+              <h3
+                className="
+                font-bold text-base sm:text-lg lg:text-xl 
+                text-gray-900 line-clamp-2 
+                group-hover:text-pink-600 
+                transition-colors duration-300
+              "
+              >
+                {product.title}
+              </h3>
+            </div>
+
+            <div className="mt-4 flex items-end justify-between">
+              <p className="text-2xl sm:text-3xl font-black text-red-600">
+                ${product.price.toFixed(2)}
+              </p>
+            </div>
+
+            {/* Floating CTA Button - Visible on Hover (Desktop) & Always on Mobile */}
+            <div
+              className="
+              absolute inset-x-4 bottom-4 
+              opacity-0 group-hover:opacity-100 
+              translate-y-6 group-hover:translate-y-0 
+              transition-all duration-500 ease-out
+              lg:opacity-0 lg:group-hover:opacity-100
+              pointer-events-none
+              md:pointer-events-auto
+            "
             >
-              <ShoppingCart className="w-5 h-5" />
-              {totalStock > 0 ? "Add to Cart" : "Out of Stock"}
-            </button>
-          </div> */}
-          <div className="absolute inset-x-0 bottom-4 px-5 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 z-30 pointer-events-none">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const url = `/product/${product.slug}`;
-                router.push(url);
-              }}
-              disabled={totalStock === 0}
-              className={`w-full cursor-pointer flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl font-bold text-sm tracking-wide shadow-xl transition-all duration-300 transform hover:scale-105 pointer-events-auto
-                ${
-                  totalStock > 0
-                    ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white hover:from-pink-600 hover:to-pink-700 hover:shadow-pink-500/30"
-                    : "bg-gray-400 text-gray-200 cursor-not-allowed"
-                }
-              `}
-            >
-              <ExternalLink className="w-5 h-5" />
-              {"View Detail"}
-            </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push(`/product/${product.slug}`);
+                }}
+                disabled={totalStock === 0}
+                className={`
+                  w-full flex items-center justify-center gap-2 
+                  py-3.5 rounded-xl font-bold text-sm 
+                  shadow-2xl transition-all duration-300
+                  hover:scale-105 active:scale-95
+                  ${
+                    totalStock > 0
+                      ? "bg-gradient-to-r from-pink-600 to-pink-700 text-white hover:shadow-pink-500/40"
+                      : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  }
+                `}
+              >
+                <ExternalLink className="w-5 h-5" />
+                View Details
+              </button>
+            </div>
           </div>
 
-          {/* Optional subtle overlay behind button for better visibility */}
-          <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none" />
-        </div>
+          {/* Subtle Hover Overlay */}
+          <div
+            className="
+            absolute inset-0 bg-pink-500/5 
+            opacity-0 group-hover:opacity-100 
+            transition-opacity duration-500 
+            rounded-2xl pointer-events-none
+          "
+          />
+        </article>
       </Link>
     </div>
   );
