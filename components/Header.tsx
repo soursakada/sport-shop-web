@@ -127,9 +127,9 @@ export default function Header({ onSearch, currentQuery = "" }: HeaderProps) {
               )}
             </Link>
 
-            <button className="lg:hidden p-3 rounded-lg hover:bg-gray-100 transition">
+            {/* <button className="lg:hidden p-3 rounded-lg hover:bg-gray-100 transition">
               <Menu className="w-6 h-6 text-gray-700" />
-            </button>
+            </button> */}
           </div>
         </div>
 
