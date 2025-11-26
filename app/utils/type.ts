@@ -1,38 +1,13 @@
-// types.ts
+// @/app/utils/type.ts
 
-export interface Tag {
+export interface ProductImage {
     id: number;
     documentId: string;
     name: string;
-    slug: string;
-    createdAt: string;
-    updatedAt: string;
-    publishedAt: string;
-    locale: string | null;
+    url: string;
 }
 
-export interface Category {
-    id: number;
-    documentId: string;
-    name: string;
-    slug: string;
-    subtitle?: string | null;
-    description: string | null;
-    createdAt: string;
-    updatedAt: string;
-    publishedAt: string;
-    locale: string | null;
-    tags?: Tag[];
-    products?: Product[];
-    image?: {
-        id: number;
-        documentId: string;
-        name: string;
-        url: string;
-    }
-}
-
-export interface Variant {
+export interface ProductVariant {
     id: number;
     sku: string;
     size: string;
@@ -41,44 +16,44 @@ export interface Variant {
     stock: number;
 }
 
-export interface CustomizationTemplate {
+export interface Category {
     id: number;
-    previewConfig: any | null;
-    fields?: CustomField[];
+    documentId: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    image?: {
+        url: string;
+    };
+    tags?: Tag[]; // optional if nested
 }
 
-export interface CustomField {
-    key: string;
-    label: string;
-    type: "text" | "number" | "select" | "boolean";
-    required?: boolean;
-    maxLength?: number;
-    options?: any;
+export interface Tag {
+    id: number;
+    documentId: string;
+    name: string;
+    slug: string;
 }
 
 export interface Product {
     id: number;
     documentId: string;
-    title: string;
+    title: string;           // This is the correct field!
     slug: string;
-    stock: number;
-    description: string | null;
-    subtitle?: string | null;
+    subtitle?: string;
+    description?: string;
     price: number;
-    currency: string;
-    allow_customization: boolean;
+    original_price?: number;
+    currency?: string;
+    allow_customization?: boolean;
     createdAt: string;
     updatedAt: string;
     publishedAt: string;
-    locale: string | null;
-    category?: Category;
+
+    // Relations
+    category?: Category | null;
     tags?: Tag[];
-    variants?: Variant[];
-    customization_template?: CustomizationTemplate;
-    images?: {
-        id: number;
-        documentId: string;
-        name: string;
-        url: string;
-    }[];
+    variants?: ProductVariant[];
+    images?: ProductImage[];
+    customization_template?: any;
 }

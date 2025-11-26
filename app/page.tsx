@@ -13,11 +13,10 @@ import {
   FaTelegramPlane,
   FaTiktok,
 } from "react-icons/fa";
-import { Menu, ShoppingCart } from "lucide-react";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
-const HOME_API = "http://localhost:1337/api/products";
-const CATEGORY_API = "http://localhost:1337/api/categories";
+const API_BASE = "http://localhost:1337/api";
 const FALLBACK_IMAGE = "https://via.placeholder.com/1920x1080?text=No+Image";
 
 const authHeader = {
@@ -47,48 +46,39 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [error, setError] = useState("");
 
-  // Real-time cart count from localStorage
+  // Cart count (unchanged)
   const [cartCount, setCartCount] = useState(0);
 
   const updateCartCount = () => {
-    const cart = localStorage.getItem("cart");
-    if (cart) {
-      try {
+    try {
+      const cart = localStorage.getItem("cart");
+      if (cart) {
         const items = JSON.parse(cart);
         const total = items.reduce(
           (sum: number, item: any) => sum + (item.quantity || 1),
           0
         );
         setCartCount(total);
-      } catch (e) {
+      } else {
         setCartCount(0);
       }
-    } else {
+    } catch {
       setCartCount(0);
     }
   };
 
-  // Update cart count on mount + listen for changes
   useEffect(() => {
     updateCartCount();
-
-    // Listen for cart changes (even from other tabs)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "cart") {
-        updateCartCount();
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    // Also listen to custom event (for same tab updates)
+    const handleStorage = (e: StorageEvent) =>
+      e.key === "cart" && updateCartCount();
+    window.addEventListener("storage", handleStorage);
     window.addEventListener("cartUpdated", updateCartCount as EventListener);
-
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("storage", handleStorage);
       window.removeEventListener(
         "cartUpdated",
         updateCartCount as EventListener
@@ -96,15 +86,46 @@ export default function HomePage() {
     };
   }, []);
 
-  // Fetch functions (unchanged)
+  // Unified fetch products
   const fetchProducts = async () => {
     try {
       setLoadingProducts(true);
-      const res = await fetch(HOME_API, { headers: authHeader });
-      const data = await res.json();
-      setProducts(data.data || []);
+      let url = `${API_BASE}/products`; // ← Your custom route
+      const params = new URLSearchParams({
+        page: "1",
+        pageSize: "100",
+      });
+
+      if (searchQuery.trim()) {
+        // Search mode → use ?search=
+        params.append("search", searchQuery.trim());
+      } else if (selectedCategory || selectedTag) {
+        // Filter mode → use your old route (still works!)
+        url = `${API_BASE}/product-by-category-tags`;
+        if (selectedCategory) params.append("category", selectedCategory);
+        if (selectedTag) params.append("tags", selectedTag);
+      }
+      // If nothing → default /products (all products)
+
+      const finalUrl = `${url}?${params.toString()}`;
+      console.log("Fetching products:", finalUrl);
+
+      const res = await fetch(finalUrl, {
+        headers: authHeader,
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        console.error("Error:", await res.text());
+        setProducts([]);
+        return;
+      }
+
+      const result = await res.json();
+      setProducts(result.data || []);
     } catch (err) {
-      setError("Failed to load products.");
+      console.error("Fetch error:", err);
+      setProducts([]);
     } finally {
       setLoadingProducts(false);
     }
@@ -113,42 +134,44 @@ export default function HomePage() {
   const fetchCategories = async () => {
     try {
       setLoadingCategories(true);
-      const res = await fetch(CATEGORY_API, { headers: authHeader });
+      const res = await fetch(`${API_BASE}/categories`, {
+        headers: authHeader,
+      });
       const data = await res.json();
       setCategories(data.data || []);
     } catch (err) {
-      setError("Failed to load categories.");
+      console.error(err);
     } finally {
       setLoadingCategories(false);
     }
   };
 
-  const fetchFilteredProducts = async (catId: string, tagId: string) => {
-    try {
-      setLoadingProducts(true);
-      const url = `http://localhost:1337/api/product-by-category-tags?category=${catId}&tags=${tagId}`;
-      const res = await fetch(url, { headers: authHeader });
-      const data = await res.json();
-      setProducts(data.data || []);
-    } catch (err) {
-      setError("Failed to filter products.");
-    } finally {
-      setLoadingProducts(false);
+  // Auto clear filters when searching
+  useEffect(() => {
+    if (searchQuery) {
+      setSelectedCategory("");
+      setSelectedTag("");
     }
-  };
+  }, [searchQuery]);
 
+  // Fetch on any change
   useEffect(() => {
     fetchProducts();
+  }, [searchQuery, selectedCategory, selectedTag]);
+
+  useEffect(() => {
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (selectedCategory || selectedTag) {
-      fetchFilteredProducts(selectedCategory, selectedTag);
-    } else {
-      fetchProducts();
-    }
-  }, [selectedCategory, selectedTag]);
+  const handleCategoryClick = (id: string) => {
+    setSelectedCategory((prev) => (prev === id ? "" : id));
+    setSelectedTag("");
+    setSearchQuery(""); // Clear search when filtering
+  };
+
+  const handleTagClick = (tagId: string) => {
+    setSelectedTag((prev) => (prev === tagId ? "" : tagId));
+  };
 
   const sliderSettings = {
     dots: true,
@@ -163,7 +186,7 @@ export default function HomePage() {
     pauseOnHover: true,
     appendDots: (dots: any) => (
       <div className="bottom-8">
-        <ul className="flex justify-center gap-3"> {dots} </ul>
+        <ul className="flex justify-center gap-3">{dots}</ul>
       </div>
     ),
     customPaging: () => (
@@ -171,18 +194,10 @@ export default function HomePage() {
     ),
   };
 
-  const handleCategoryClick = (id: string) => {
-    setSelectedCategory((prev) => (prev === id ? "" : id));
-    setSelectedTag("");
-  };
-
-  const handleTagClick = (tagId: string) => {
-    setSelectedTag((prev) => (prev === tagId ? "" : tagId));
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header onSearch={setSearchQuery} currentQuery={searchQuery} />
+
       {/* Hero Slider */}
       <section className="relative h-96 md:h-screen">
         <Slider {...sliderSettings}>
@@ -215,55 +230,70 @@ export default function HomePage() {
         </Slider>
       </section>
 
-      {/* Categories & Products (unchanged) */}
-      <section className="max-w-7xl mx-auto px-4 py-16">
-        <h2 className="text-4xl font-bold text-center mb-12 text-gray-800">
-          Shop by Category
-        </h2>
-        {/* ... your category grid code remains the same ... */}
-        {loadingCategories ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="bg-gray-200 rounded-xl h-48 animate-pulse"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryClick(cat.documentId)}
-                className={`group relative overflow-hidden rounded-2xl shadow-lg transition-all duration-300 ${
-                  selectedCategory === cat.documentId
-                    ? "ring-4 ring-pink-500 scale-105"
-                    : "hover:shadow-2xl hover:scale-105"
-                }`}
-              >
-                <img
-                  src={
-                    cat.image?.url
-                      ? `http://localhost:1337${cat.image?.url}`
-                      : "https://via.placeholder.com/400x300?text=No+Image"
-                  }
-                  alt={cat.name}
-                  className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                <div className="absolute bottom-4 left-4 text-left">
-                  <p className="text-white text-xl font-bold">{cat.name}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Search Results Header */}
+      {searchQuery && (
+        <section className="max-w-7xl mx-auto px-4 py-12 text-center">
+          <h2 className="text-4xl font-bold text-gray-800">
+            Search Results for:{" "}
+            <span className="text-pink-600">"{searchQuery}"</span>
+          </h2>
+          <button
+            onClick={() => setSearchQuery("")}
+            className="mt-4 text-pink-600 hover:underline font-medium"
+          >
+            ← Back to all products
+          </button>
+        </section>
+      )}
 
-        {/* Tag Filters */}
-        {selectedCategory &&
-          (categories.find((c) => c.documentId === selectedCategory)?.tags
-            ?.length ?? 0) > 0 && (
+      {/* Categories Section - Only show when NOT searching */}
+      {!searchQuery && (
+        <section className="max-w-7xl mx-auto px-4 py-16">
+          <h2 className="text-4xl font-bold text-center mb-12 text-gray-800">
+            Shop by Category
+          </h2>
+
+          {loadingCategories ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-gray-200 rounded-xl h-48 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategoryClick(cat.documentId)}
+                  className={`group relative overflow-hidden rounded-2xl shadow-lg transition-all duration-300 ${
+                    selectedCategory === cat.documentId
+                      ? "ring-4 ring-pink-500 scale-105"
+                      : "hover:scale-105 hover:shadow-2xl"
+                  }`}
+                >
+                  <img
+                    src={
+                      cat.image?.url
+                        ? `http://localhost:1337${cat.image.url}`
+                        : "https://via.placeholder.com/400x300?text=No+Image"
+                    }
+                    alt={cat.name}
+                    className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                  <div className="absolute bottom-4 left-4 text-left">
+                    <p className="text-white text-xl font-bold">{cat.name}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Tag Filter */}
+          {selectedCategory && !searchQuery && (
             <div className="mt-12 text-center">
               <h3 className="text-xl font-semibold mb-6">Filter by:</h3>
               <div className="flex flex-wrap justify-center gap-3">
@@ -272,11 +302,10 @@ export default function HomePage() {
                   ?.tags?.map((tag) => (
                     <button
                       key={tag.id}
-                      type="button"
                       onClick={() => handleTagClick(tag.documentId)}
                       className={`px-6 py-3 rounded-full font-medium transition ${
                         selectedTag === tag.documentId
-                          ? "bg-blue-600 text-white shadow-lg"
+                          ? "bg-pink-600 text-white shadow-lg"
                           : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                       }`}
                     >
@@ -285,7 +314,6 @@ export default function HomePage() {
                   ))}
                 {selectedTag && (
                   <button
-                    type="button"
                     onClick={() => setSelectedTag("")}
                     className="px-6 py-3 rounded-full bg-red-500 text-white hover:bg-red-600 transition"
                   >
@@ -295,138 +323,55 @@ export default function HomePage() {
               </div>
             </div>
           )}
-      </section>
+        </section>
+      )}
 
       {/* Products Section */}
       <section id="products" className="bg-white py-20">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12 text-gray-800">
-            {selectedCategory || selectedTag ? "Results" : "Featured Products"}
+            {searchQuery
+              ? `Found ${products.length} product${
+                  products.length !== 1 ? "s" : ""
+                }`
+              : selectedCategory || selectedTag
+              ? "Filtered Products"
+              : "Featured Products"}
           </h2>
+
           {loadingProducts ? (
             <div className="text-center py-20">
               <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-pink-500 border-t-transparent"></div>
+              <p className="mt-4 text-gray-600">
+                {searchQuery
+                  ? `Searching for "${searchQuery}"...`
+                  : "Loading products..."}
+              </p>
             </div>
           ) : products.length === 0 ? (
-            <p className="text-center text-xl text-gray-500 py-20">
-              No products found in this category.
-            </p>
+            <div className="text-center py-20">
+              <p className="text-2xl text-gray-500">
+                {searchQuery
+                  ? `No products found for "${searchQuery}"`
+                  : "No products in this category."}
+              </p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="mt-6 text-pink-600 hover:underline font-medium"
+                >
+                  ← View all products
+                </button>
+              )}
+            </div>
           ) : (
             <ProductList products={products} />
           )}
         </div>
       </section>
 
-      {/* Footer (your enhanced one) */}
-      <footer className="bg-gray-900 text-gray-300 py-20 mt-24 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Puda Activewear
-            </h2>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-              Premium activewear designed for performance and style.
-            </p>
-          </div>
-
-          <div className="flex justify-center items-center gap-6 mb-10">
-            {/* Telegram */}
-            <a
-              href="https://t.me/yourusername"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Follow us on Telegram"
-              className="group relative p-4 rounded-full bg-gray-800/50 border border-gray-700
-                   text-gray-400 hover:text-white
-                   hover:bg-[#0088cc] hover:border-[#0088cc]
-                   transform hover:scale-110 hover:-translate-y-1
-                   transition-all duration-300 shadow-lg hover:shadow-[#0088cc]/40"
-            >
-              <FaTelegramPlane size={24} />
-              <span
-                className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 
-                         pointer-events-none text-xs font-medium bg-gray-900 text-white px-3 py-1.5 rounded-lg
-                         border border-gray-700 whitespace-nowrap transition-opacity duration-200"
-              >
-                Telegram
-              </span>
-            </a>
-
-            {/* Facebook */}
-            <a
-              href="https://facebook.com/yourpage"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Follow us on Facebook"
-              className="group relative p-4 rounded-full bg-gray-800/50 border border-gray-700
-                   text-gray-400 hover:text-white
-                   hover:bg-[#1877f2] hover:border-[#1877f2]
-                   transform hover:scale-110 hover:-translate-y-1
-                   transition-all duration-300 shadow-lg hover:shadow-blue-500/40"
-            >
-              <FaFacebookF size={24} />
-              <span
-                className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 
-                         pointer-events-none text-xs font-medium bg-gray-900 text-white px-3 py-1.5 rounded-lg
-                         border border-gray-700 whitespace-nowrap transition-opacity duration-200"
-              >
-                Facebook
-              </span>
-            </a>
-
-            {/* Instagram */}
-            <a
-              href="https://instagram.com/yourprofile"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Follow us on Instagram"
-              className="group relative p-4 rounded-full bg-gray-800/50 border border-gray-700
-                   text-gray-400 hover:text-white
-                   hover:bg-gradient-to-tr from-purple-600 via-pink-500 to-orange-400 
-                   hover:border-pink-500
-                   transform hover:scale-110 hover:-translate-y-1
-                   transition-all duration-300 shadow-lg hover:shadow-pink-500/50"
-            >
-              <FaInstagram size={24} />
-              <span
-                className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 
-                         pointer-events-none text-xs font-medium bg-gray-900 text-white px-3 py-1.5 rounded-lg
-                         border border-gray-700 whitespace-nowrap transition-opacity duration-200"
-              >
-                Instagram
-              </span>
-            </a>
-
-            {/* TikTok */}
-            <a
-              href="https://tiktok.com/@yourprofile"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Follow us on TikTok"
-              className="group relative p-4 rounded-full bg-gray-800/50 border border-gray-700
-                   text-gray-400 hover:text-white
-                   hover:bg-black hover:border-white/30
-                   transform hover:scale-110 hover:-translate-y-1
-                   transition-all duration-300 shadow-lg hover:shadow-white/20"
-            >
-              <FaTiktok size={24} />
-              <span
-                className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 
-                         pointer-events-none text-xs font-medium bg-gray-900 text-white px-3 py-1.5 rounded-lg
-                         border border-gray-700 whitespace-nowrap transition-opacity duration-200"
-              >
-                TikTok
-              </span>
-            </a>
-          </div>
-
-          <div className="text-center pt-8 border-t border-gray-800">
-            <p className="text-sm text-gray-500">
-              © {new Date().getFullYear()} Puda Activewear. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
