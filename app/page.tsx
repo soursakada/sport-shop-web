@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -52,6 +52,7 @@ export default function HomePage() {
 
   // Cart count (unchanged)
   const [cartCount, setCartCount] = useState(0);
+  const productsSectionRef = useRef<HTMLDivElement>(null);
 
   const updateCartCount = () => {
     try {
@@ -172,6 +173,23 @@ export default function HomePage() {
   const handleTagClick = (tagId: string) => {
     setSelectedTag((prev) => (prev === tagId ? "" : tagId));
   };
+
+  // Add this effect — នេះជាគន្លឹះ!
+  useEffect(() => {
+    if (searchQuery && productsSectionRef.current) {
+      // Scroll smoothly to products section
+      productsSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+
+      // Optional: បន្ថែម offset -100px បើ header ជាប់ (sticky)
+      window.scrollTo({
+        top: productsSectionRef.current.offsetTop - 100,
+        behavior: "smooth",
+      });
+    }
+  }, [searchQuery, products.length]);
 
   const sliderSettings = {
     dots: true,
@@ -327,7 +345,11 @@ export default function HomePage() {
       )}
 
       {/* Products Section */}
-      <section id="products" className="bg-white py-20">
+      <section
+        ref={productsSectionRef}
+        id="products"
+        className="bg-white py-20"
+      >
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12 text-gray-800">
             {searchQuery
